@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from app.core.database import get_db
+from app.core.database import get_db, SessionLocal
 from app.api.deps import get_current_user
 from app.models.models import Job, JobPost, JobStatus, PostStatus, User
 from app.schemas.schemas import (
@@ -135,13 +135,17 @@ async def confirm_job(
     if job.status != JobStatus.DRAFT:
         raise HTTPException(status_code=400, detail=f"Job is {job.status}, not DRAFT")
 
+    # Pre-load data while session is active
+    job_posts = list(job.posts)
+    job_config = dict(job.parsed_config)
+
     async def event_stream() -> AsyncGenerator[str, None]:
         def sse(event: str, data: dict) -> str:
             return f"event: {event}\ndata: {json.dumps(data, default=str)}\n\n"
 
         try:
-            config = ParsedConfig(**job.parsed_config)
-            posts = sorted(job.posts, key=lambda x: x.scheduled_time)
+            config = ParsedConfig(**job_config)
+            posts = sorted(job_posts, key=lambda x: x.scheduled_time)
             total = len(posts)
 
             yield sse("step", {
@@ -191,16 +195,24 @@ async def confirm_job(
 
             results = await gen_task
 
-            for post, result in zip(posts, results):
-                post.content_text = result["content_text"]
-                post.image_url = result.get("image_url")
-                post.image_prompt = result.get("image_prompt")
+            # Save results using a fresh session since the original one is closed
+            with SessionLocal() as db_session:
+                # Re-fetch or re-attach objects
+                for post_data, result in zip(posts, results):
+                    db_post = db_session.query(JobPost).filter(JobPost.id == post_data.id).first()
+                    if db_post:
+                        db_post.content_text = result["content_text"]
+                        db_post.image_url = result.get("image_url")
+                        db_post.image_prompt = result.get("image_prompt")
+                        db_post.status = PostStatus.PENDING # Ensure it's ready to post
 
-            job.status = JobStatus.SCHEDULED
-            db.commit()
+                db_job = db_session.query(Job).filter(Job.id == job_id).first()
+                if db_job:
+                    db_job.status = JobStatus.SCHEDULED
+                db_session.commit()
 
             yield sse("step", {"step": "complete", "message": "All content generated!"})
-            yield sse("done", {"job_id": job.id, "status": "SCHEDULED"})
+            yield sse("done", {"job_id": job_id, "status": "SCHEDULED"})
 
         except Exception as e:
             yield sse("error", {"message": str(e)})

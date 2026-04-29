@@ -7,6 +7,7 @@ from app.schemas.schemas import ParsedConfig
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
+
 SYSTEM_PROMPT = """You are a social media campaign planning assistant.
 Your job is to parse natural language commands (in ANY language) into structured JSON campaign configurations.
 
@@ -50,7 +51,7 @@ async def parse_command(raw_input: str) -> ParsedConfig:
     """
     try:
         response = await client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": raw_input.strip()},
@@ -62,6 +63,7 @@ async def parse_command(raw_input: str) -> ParsedConfig:
 
         raw_json = response.choices[0].message.content
         data = json.loads(raw_json)
+
 
         return _normalize_config(data, raw_input)
 

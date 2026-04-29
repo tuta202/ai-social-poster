@@ -42,7 +42,7 @@ async def generate_text(
     for attempt in range(max_retries + 1):
         try:
             response = await client.chat.completions.create(
-                model="gpt-4o",
+                model="gpt-4o-mini",
                 messages=[
                     {"role": "system", "content": TEXT_SYSTEM_PROMPT},
                     {"role": "user", "content": _build_text_prompt(config, day_index, post_order)},
