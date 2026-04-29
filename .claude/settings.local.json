@@ -8,7 +8,14 @@
       "Bash(python -c \"from app.main import app; print\\('OK'\\)\")",
       "Bash(uvicorn app.main:app --port 8000)",
       "Bash(curl -s http://localhost:8000/health)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(alembic init *)",
+      "Bash(python -m alembic --version)",
+      "Bash(python -c \"import fastapi; print\\('ok'\\)\")",
+      "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(python -m pip install alembic==1.13.1)",
+      "Bash(python -m alembic init alembic)",
+      "Bash(python *)"
     ]
   }
 }

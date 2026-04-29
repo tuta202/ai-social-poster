@@ -17,3 +17,8 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def create_tables():
+    """Dùng cho dev/test — production dùng alembic"""
+    Base.metadata.create_all(bind=engine)

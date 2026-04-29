@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api import auth, jobs, facebook
+from app.models import models  # noqa: F401
 
 app = FastAPI(title="PostPilot AI", version="0.1.0")
 

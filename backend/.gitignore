@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+
+# Database
+*.db
+*.sqlite3
+postpilot.db
+
+# Alembic
+# (không ignore versions/ — cần commit migrations)
+
+# IDE
+.idea/
+.vscode/
+*.swp
