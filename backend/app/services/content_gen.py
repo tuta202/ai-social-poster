@@ -1,5 +1,5 @@
 import asyncio
-from typing import Optional
+from typing import Optional, Callable
 from openai import AsyncOpenAI
 from app.core.config import settings
 from app.schemas.schemas import ParsedConfig
@@ -117,7 +117,7 @@ async def generate_image(
 async def generate_all_content(
     config: ParsedConfig,
     post_slots: list[dict],
-    on_progress: Optional[callable] = None,
+    on_progress: Optional[Callable[[int, int], None]] = None,
 ) -> list[dict]:
     """
     Generate content for all post slots.
