@@ -15,7 +15,10 @@
       "Bash(python -c \"import sys; print\\(sys.executable\\)\")",
       "Bash(python -m pip install alembic==1.13.1)",
       "Bash(python -m alembic init alembic)",
-      "Bash(python *)"
+      "Bash(python *)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(taskkill /F /IM python.exe)",
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"admin\\\\\",\\\\\"password\\\\\":\\\\\"postpilot2024\\\\\"}\")"
     ]
   }
 }
