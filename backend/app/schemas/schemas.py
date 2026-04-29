@@ -25,6 +25,7 @@ class TokenResponse(BaseModel):
 # ── Facebook ──────────────────────────────────────────
 class FacebookTokenSetup(BaseModel):
     short_lived_token: str
+    page_id: str
 
 
 class FacebookPageOut(BaseModel):

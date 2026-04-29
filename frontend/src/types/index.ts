@@ -13,6 +13,9 @@ export interface Job {
   status: JobStatus
   created_at: string
   posts?: JobPost[]
+  total_posts?: number
+  posted_count?: number
+  failed_count?: number
 }
 
 export interface JobPost {
@@ -43,4 +46,10 @@ export interface JobPreview {
   job_id: number
   config: ParsedConfig
   posts: JobPost[]
+}
+
+export interface FacebookPage {
+  page_id: string
+  page_name: string | null
+  token_expires_at: string | null
 }

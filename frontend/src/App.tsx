@@ -5,6 +5,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import CommandPage from './pages/CommandPage'
 import DashboardPage from './pages/DashboardPage'
+import FacebookSetupPage from './pages/FacebookSetupPage'
 
 export default function App() {
   const { initAuth } = useAuthStore()
@@ -29,6 +30,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/facebook-setup"
+        element={
+          <ProtectedRoute>
+            <FacebookSetupPage />
           </ProtectedRoute>
         }
       />

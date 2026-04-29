@@ -18,7 +18,15 @@
       "Bash(python *)",
       "Bash(curl -s http://localhost:5173/)",
       "Bash(taskkill /F /IM python.exe)",
-      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"admin\\\\\",\\\\\"password\\\\\":\\\\\"postpilot2024\\\\\"}\")"
+      "Bash(curl -s -X POST http://localhost:8000/auth/login -H \"Content-Type: application/json\" -d \"{\\\\\"username\\\\\":\\\\\"admin\\\\\",\\\\\"password\\\\\":\\\\\"postpilot2024\\\\\"}\")",
+      "Bash(node *)",
+      "Bash(pip install *)",
+      "Bash(uvicorn app.main:app --port 8009)",
+      "Bash(curl -s http://localhost:8009/health)",
+      "Bash(kill %1)",
+      "Bash(uvicorn app.main:app --port 8010)",
+      "Bash(curl -s -X POST http://localhost:8010/auth/login -H \"Content-Type: application/json\" -d '{\"username\":\"admin\",\"password\":\"postpilot2024\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174/)"
     ]
   }
 }

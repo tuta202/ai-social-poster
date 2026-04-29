@@ -28,3 +28,21 @@ python -m alembic revision --autogenerate -m "description"
 
 ### Environment
 Copy `.env.example` to `.env` and fill in values before running.
+
+## Production (Railway)
+
+See [DEPLOY.md](../DEPLOY.md) for full deployment guide.
+
+Quick start:
+1. Set environment variables in Railway dashboard
+2. `alembic upgrade head` runs automatically on deploy
+3. Run `python seed.py` once to create admin user
+
+### Alembic (reminder)
+- Windows dev: `python -m alembic upgrade head`
+- Railway/Linux: `alembic upgrade head`
+
+### Generate SECRET_KEY
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```

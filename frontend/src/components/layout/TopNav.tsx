@@ -13,8 +13,9 @@ export default function TopNav() {
   }
 
   const navLinks = [
-    { to: '/command', label: 'New Job' },
-    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/command',        label: 'New Job' },
+    { to: '/dashboard',      label: 'Dashboard' },
+    { to: '/facebook-setup', label: 'FB Setup' },
   ]
 
   return (

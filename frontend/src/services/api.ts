@@ -23,3 +23,54 @@ api.interceptors.response.use(
     return Promise.reject(err)
   }
 )
+
+/**
+ * SSE fetch helper — native fetch for streaming (axios buffers responses).
+ */
+export async function ssePost<T = unknown>(
+  path: string,
+  body: unknown,
+  onEvent: (event: string, data: T) => void,
+  token?: string,
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }))
+    throw new Error((err as { detail?: string }).detail || 'Request failed')
+  }
+
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let currentEvent = 'message'
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    for (const line of lines) {
+      if (line.startsWith('event:')) {
+        currentEvent = line.slice(6).trim()
+      } else if (line.startsWith('data:')) {
+        try {
+          const data = JSON.parse(line.slice(5).trim())
+          onEvent(currentEvent, data as T)
+        } catch {
+          // ignore malformed data lines
+        }
+      }
+    }
+  }
+}
