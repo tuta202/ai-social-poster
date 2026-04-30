@@ -31,7 +31,7 @@ def generate_schedule(
                 "job_id": job_id,
                 "day_index": day_index,
                 "post_order": post_order,
-                "content_text": "",
+                "content_text": None,
                 "image_url": None,
                 "image_prompt": None,
                 "scheduled_time": scheduled_dt,

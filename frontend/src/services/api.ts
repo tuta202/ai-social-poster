@@ -24,6 +24,15 @@ api.interceptors.response.use(
   }
 )
 
+export const approvePost = async (
+  jobId: number,
+  postId: number,
+  editedText?: string,
+): Promise<void> => {
+  const body = editedText !== undefined ? { content_text: editedText } : {}
+  await api.post(`/jobs/${jobId}/posts/${postId}/approve`, body)
+}
+
 /**
  * SSE fetch helper — native fetch for streaming (axios buffers responses).
  */

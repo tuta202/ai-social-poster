@@ -6,9 +6,16 @@ import JobStatusBadge from './JobStatusBadge'
 interface Props {
   job: Job | null
   onClose: () => void
+  onApprovePost?: (jobId: number, postId: number, editedText?: string) => Promise<void>
 }
 
-export default function JobDetailPanel({ job, onClose }: Props) {
+export default function JobDetailPanel({ job, onClose, onApprovePost }: Props) {
+  const handleApprove = onApprovePost && job
+    ? async (postId: number, editedText?: string) => {
+        await onApprovePost(job.id, postId, editedText)
+      }
+    : undefined
+
   return (
     <AnimatePresence>
       {job && (
@@ -62,6 +69,8 @@ export default function JobDetailPanel({ job, onClose }: Props) {
                     post={post}
                     index={i}
                     showImage={!!post.image_url}
+                    showApprove={true}
+                    onApprove={handleApprove}
                   />
                 ))
               )}

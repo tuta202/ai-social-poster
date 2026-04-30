@@ -11,16 +11,15 @@ client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 SYSTEM_PROMPT = """You are a social media campaign planning assistant.
 Your job is to parse natural language commands (in ANY language) into structured JSON campaign configurations.
 
-The user wants to create a Facebook posting campaign. Extract the following information:
-
 OUTPUT FORMAT — return ONLY valid JSON, no markdown, no explanation:
 {
   "title": "short campaign title in the same language as input",
-  "duration_days": <integer, number of days>,
-  "items_per_day": <integer, posts per day>,
-  "post_time": "<HH:MM in 24h format, e.g. 08:00>",
-  "content_type": "<one of: vocabulary, grammar, dialogue, motivation, lifestyle, custom>",
+  "duration_days": <integer>,
+  "items_per_day": <integer>,
+  "post_time": "<HH:MM in 24h format>",
+  "content_type": "<vocabulary|grammar|dialogue|motivation|lifestyle|custom>",
   "has_images": <true or false>,
+  "image_description": "<description of desired image style/content, empty string if no images>",
   "tags": ["tag1", "tag2"],
   "notes": "any extra instructions for content generation"
 }
@@ -31,15 +30,22 @@ DEFAULTS if not specified:
 - post_time: "08:00"
 - content_type: "custom"
 - has_images: false
+- image_description: ""
 - tags: []
 - notes: ""
 
 RULES:
 - Always return valid JSON only
-- Infer content_type from context (e.g. "từ vựng N2" → "vocabulary", "động lực" → "motivation")
-- If user mentions images/ảnh → has_images: true
-- Normalize typos (e.g. "1O ngày" → duration_days: 10)
-- post_time: if user says "buổi sáng/morning" → "08:00", "trưa/noon" → "12:00", "tối/evening" → "20:00"
+- has_images: true only if user explicitly mentions images/photos/illustrations/anh/hinh
+- image_description: extract EXACTLY what the user says about image style/content
+  Examples:
+    "anh anime mau pastel" -> "anime style, pastel colors"
+    "flat design illustration" -> "flat design illustration"
+    "anh minh hoa don gian" -> "simple illustration"
+    no image mentioned -> ""
+- Infer content_type from context (e.g. "tu vung N2" -> "vocabulary", "dong luc" -> "motivation")
+- Normalize typos (e.g. "1O ngay" -> duration_days: 10)
+- post_time: "buoi sang/morning" -> "08:00", "trua/noon" -> "12:00", "toi/evening" -> "20:00"
 - title: concise, max 60 chars
 """
 
@@ -90,13 +96,17 @@ def _normalize_config(data: dict, raw_input: str) -> ParsedConfig:
     if not title:
         title = raw_input[:60].strip()
 
+    has_images = bool(data.get("has_images", False))
+    image_description = str(data.get("image_description", "")).strip() if has_images else ""
+
     return ParsedConfig(
         title=title,
         duration_days=duration_days,
         items_per_day=items_per_day,
         post_time=post_time,
         content_type=content_type,
-        has_images=bool(data.get("has_images", False)),
+        has_images=has_images,
+        image_description=image_description,
         tags=[str(t) for t in data.get("tags", [])],
         notes=str(data.get("notes", "")),
     )
@@ -111,6 +121,7 @@ def _default_config(raw_input: str, error: str = "") -> ParsedConfig:
         post_time="08:00",
         content_type="custom",
         has_images=False,
+        image_description="",
         tags=[],
         notes=f"[Auto-generated from: {raw_input[:100]}]" + (f" [Parse error: {error[:100]}]" if error else ""),
     )

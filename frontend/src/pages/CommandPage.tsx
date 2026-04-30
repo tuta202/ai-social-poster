@@ -19,6 +19,7 @@ interface PreviewState {
     post_time: string
     content_type: string
     has_images: boolean
+    image_description: string
     tags: string[]
   }
   posts: JobPost[]

@@ -56,6 +56,18 @@ export default function DashboardPage() {
     removeJob(id)
   }
 
+  const handleApprovePost = async (
+    jobId: number,
+    postId: number,
+    editedText?: string,
+  ) => {
+    const body = editedText !== undefined ? { content_text: editedText } : {}
+    await api.post(`/jobs/${jobId}/posts/${postId}/approve`, body)
+    const res = await api.get(`/jobs/${jobId}`)
+    setCurrentJob(res.data)
+    fetchJobs()
+  }
+
   const statusOrder: Record<string, number> = {
     RUNNING: 0, SCHEDULED: 1, PAUSED: 2, DRAFT: 3, DONE: 4,
   }
@@ -178,6 +190,7 @@ export default function DashboardPage() {
       <JobDetailPanel
         job={currentJob}
         onClose={() => setCurrentJob(null)}
+        onApprovePost={handleApprovePost}
       />
     </PageWrapper>
   )

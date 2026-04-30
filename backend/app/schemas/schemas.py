@@ -47,6 +47,7 @@ class ParsedConfig(BaseModel):
     post_time: str
     content_type: str
     has_images: bool
+    image_description: str = ""
     tags: List[str] = []
     notes: str = ""
 
@@ -56,7 +57,8 @@ class JobPostOut(BaseModel):
     job_id: int
     day_index: int
     post_order: int
-    content_text: str
+    content_text: Optional[str]
+    original_content_text: Optional[str]
     image_url: Optional[str]
     image_prompt: Optional[str]
     scheduled_time: datetime
@@ -64,6 +66,7 @@ class JobPostOut(BaseModel):
     fb_post_id: Optional[str]
     error_message: Optional[str]
     posted_at: Optional[datetime]
+    approved_at: Optional[datetime]
     model_config = {"from_attributes": True}
 
 
@@ -73,10 +76,15 @@ class JobOut(BaseModel):
     raw_input: str
     parsed_config: Optional[dict]
     status: JobStatus
+    style_profile: Optional[dict]
     created_at: datetime
     updated_at: Optional[datetime]
     posts: List[JobPostOut] = []
     model_config = {"from_attributes": True}
+
+
+class ApprovePostRequest(BaseModel):
+    content_text: Optional[str] = None
 
 
 class JobPreviewResponse(BaseModel):

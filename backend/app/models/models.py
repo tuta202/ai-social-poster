@@ -17,9 +17,10 @@ class JobStatus(str, enum.Enum):
 
 
 class PostStatus(str, enum.Enum):
-    PENDING = "PENDING"
-    POSTED = "POSTED"
-    FAILED = "FAILED"
+    PENDING  = "PENDING"
+    APPROVED = "APPROVED"
+    POSTED   = "POSTED"
+    FAILED   = "FAILED"
 
 
 class User(Base):
@@ -59,6 +60,7 @@ class Job(Base):
     raw_input = Column(Text, nullable=False)
     parsed_config = Column(JSON, nullable=True)
     status = Column(SAEnum(JobStatus), default=JobStatus.DRAFT, nullable=False)
+    style_profile = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
@@ -73,7 +75,8 @@ class JobPost(Base):
     job_id = Column(Integer, ForeignKey("jobs.id"), nullable=False)
     day_index = Column(Integer, nullable=False)
     post_order = Column(Integer, default=1)
-    content_text = Column(Text, nullable=False)
+    content_text = Column(Text, nullable=True)
+    original_content_text = Column(Text, nullable=True)
     image_url = Column(Text, nullable=True)
     image_prompt = Column(Text, nullable=True)
     scheduled_time = Column(DateTime(timezone=True), nullable=False)
@@ -81,5 +84,6 @@ class JobPost(Base):
     fb_post_id = Column(String(255), nullable=True)
     error_message = Column(Text, nullable=True)
     posted_at = Column(DateTime(timezone=True), nullable=True)
+    approved_at = Column(DateTime(timezone=True), nullable=True)
 
     job = relationship("Job", back_populates="posts")

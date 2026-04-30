@@ -9,6 +9,7 @@ interface ParsedConfigDisplay {
   post_time: string
   content_type: string
   has_images: boolean
+  image_description: string
   tags: string[]
 }
 
@@ -67,7 +68,7 @@ export default function JobPreview({
         <div className="flex items-center gap-3 mt-4 flex-wrap">
           {config.has_images && (
             <span className="text-xs px-2 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-              🖼 With Images
+              With Images
             </span>
           )}
           {config.tags.map(tag => (
@@ -76,6 +77,14 @@ export default function JobPreview({
             </span>
           ))}
         </div>
+
+        {/* Image description */}
+        {config.has_images && config.image_description && (
+          <div className="mt-3 p-3 bg-cyan-500/5 border border-cyan-500/15 rounded-xl">
+            <p className="text-xs text-gray-500 mb-1">Image Style</p>
+            <p className="text-sm text-cyan-300">{config.image_description}</p>
+          </div>
+        )}
       </div>
 
       {/* Confirm button + progress */}

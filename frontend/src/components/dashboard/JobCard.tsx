@@ -15,6 +15,10 @@ interface Props {
 export default function JobCard({ job, index, onView, onPause, onResume, onDelete }: Props) {
   const [isActing, setIsActing] = useState(false)
 
+  const pendingApprovalCount = (job.posts ?? []).filter(
+    p => p.status === 'PENDING' && p.content_text
+  ).length
+
   const act = async (fn: () => Promise<void>) => {
     setIsActing(true)
     try { await fn() } finally { setIsActing(false) }
@@ -48,7 +52,19 @@ export default function JobCard({ job, index, onView, onPause, onResume, onDelet
           <h3 className="font-display font-semibold text-white truncate">{job.title}</h3>
           <p className="text-xs text-gray-600 mt-0.5">Created {createdDate} · Job #{job.id}</p>
         </div>
-        <JobStatusBadge status={job.status} />
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <JobStatusBadge status={job.status} />
+          {pendingApprovalCount > 0 && (
+            <motion.span
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="text-xs px-2 py-0.5 rounded-full border font-medium
+                         text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
+            >
+              {pendingApprovalCount} need approval
+            </motion.span>
+          )}
+        </div>
       </div>
 
       {/* Progress bar (only for non-DRAFT) */}

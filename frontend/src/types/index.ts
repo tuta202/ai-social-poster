@@ -1,5 +1,5 @@
 export type JobStatus = 'DRAFT' | 'SCHEDULED' | 'RUNNING' | 'DONE' | 'PAUSED'
-export type PostStatus = 'PENDING' | 'POSTED' | 'FAILED'
+export type PostStatus = 'PENDING' | 'APPROVED' | 'POSTED' | 'FAILED'
 
 export interface User {
   id: number
@@ -10,9 +10,12 @@ export interface Job {
   id: number
   title: string
   raw_input: string
+  parsed_config: ParsedConfig | null
   status: JobStatus
   created_at: string
+  updated_at: string | null
   posts?: JobPost[]
+  style_profile?: Record<string, string> | null
   total_posts?: number
   posted_count?: number
   failed_count?: number
@@ -23,12 +26,16 @@ export interface JobPost {
   job_id: number
   day_index: number
   post_order: number
-  content_text: string
+  content_text: string | null
+  original_content_text: string | null
   image_url: string | null
   image_prompt: string | null
   scheduled_time: string
   status: PostStatus
   fb_post_id: string | null
+  error_message: string | null
+  posted_at: string | null
+  approved_at: string | null
 }
 
 export interface ParsedConfig {
@@ -38,6 +45,7 @@ export interface ParsedConfig {
   post_time: string
   content_type: string
   has_images: boolean
+  image_description: string
   tags: string[]
   notes: string
 }
