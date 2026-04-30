@@ -4,8 +4,9 @@ Runs inside the FastAPI process (single worker on Railway).
 """
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.core.database import SessionLocal
@@ -15,6 +16,10 @@ from app.services.fb_poster import post_to_facebook
 logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="UTC")
+
+# How many minutes before scheduled post time to generate content.
+# Gives user time to review and approve before the post goes live.
+ADVANCE_GENERATION_MINUTES = 60
 
 
 async def _post_due_items():
@@ -116,14 +121,15 @@ async def _do_post(job_post: JobPost, db: Session):
 async def _generate_upcoming_content(db: Session, now: datetime):
     """
     Find posts for upcoming days that have no content yet → generate.
-    Only generates if content_text is empty (not yet generated).
+    Triggers ADVANCE_GENERATION_MINUTES before scheduled post time,
+    giving users time to review and approve before the post goes live.
     """
     from itertools import groupby
     from operator import attrgetter
     from app.services.content_gen import generate_day_content
     from app.schemas.schemas import ParsedConfig
 
-    from sqlalchemy import or_
+    lookahead = now + timedelta(minutes=ADVANCE_GENERATION_MINUTES)
 
     empty_due = (
         db.query(JobPost)
@@ -131,7 +137,7 @@ async def _generate_upcoming_content(db: Session, now: datetime):
         .filter(
             JobPost.status == PostStatus.PENDING,
             or_(JobPost.content_text.is_(None), JobPost.content_text == ""),
-            JobPost.scheduled_time <= now,
+            JobPost.scheduled_time <= lookahead,
             Job.status.in_([JobStatus.SCHEDULED, JobStatus.RUNNING]),
         )
         .order_by(JobPost.job_id, JobPost.day_index)
@@ -152,7 +158,10 @@ async def _generate_upcoming_content(db: Session, now: datetime):
 
         try:
             config = ParsedConfig(**job.parsed_config)
-            logger.info(f"Generating content for job {job_id} day {day_index}")
+            logger.info(
+                f"Generating content for job {job_id} day {day_index} "
+                f"({ADVANCE_GENERATION_MINUTES}min advance)"
+            )
 
             results = await generate_day_content(
                 config=config,
