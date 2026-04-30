@@ -200,7 +200,7 @@ async def generate_image(
             url = await provider.generate(
                 prompt=prompt,
                 model=settings.AI_IMAGE_MODEL,
-                size="1024x1024",
+                size=settings.AI_IMAGE_SIZE,
             )
             return url, prompt
         except Exception as e:

@@ -48,11 +48,15 @@ class OpenAIImageProvider(ImageProvider):
         model: str,
         size: str = "1024x1024",
     ) -> str:
-        response = await self._client.images.generate(
-            model=model,
-            prompt=prompt,
-            size=size,
-            quality="standard",
-            n=1,
-        )
+        kwargs = {
+            "model": model,
+            "prompt": prompt,
+            "size": size,
+            "n": 1,
+        }
+        # Quality only supported by dall-e-3
+        if model == "dall-e-3":
+            kwargs["quality"] = "standard"
+
+        response = await self._client.images.generate(**kwargs)
         return response.data[0].url

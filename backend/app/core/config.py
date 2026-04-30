@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # AI Image Provider
     AI_IMAGE_PROVIDER: str = "openai"   # "openai" | "gemini"
     AI_IMAGE_MODEL: str = "dall-e-3"    # dall-e-3 | imagen-3.0-generate-001
+    AI_IMAGE_SIZE: str = "1024x1024"
 
     # Gemini API Key
     GEMINI_API_KEY: str = ""
