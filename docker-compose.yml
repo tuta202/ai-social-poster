@@ -34,6 +34,12 @@ services:
       FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
       FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
       ALLOWED_ORIGINS: '["http://localhost:5173","http://localhost:3000"]'
+      AI_TEXT_PROVIDER: ${AI_TEXT_PROVIDER:-openai}
+      AI_TEXT_MODEL: ${AI_TEXT_MODEL:-gpt-4o}
+      AI_MINI_MODEL: ${AI_MINI_MODEL:-gpt-4o-mini}
+      AI_IMAGE_PROVIDER: ${AI_IMAGE_PROVIDER:-openai}
+      AI_IMAGE_MODEL: ${AI_IMAGE_MODEL:-dall-e-3}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
     volumes:
       - ./backend:/app
     depends_on:

@@ -1,11 +1,17 @@
+"""
+Content generation service — provider-agnostic.
+Uses AI provider abstraction layer (app/services/ai/).
+"""
 import asyncio
 import json
+import logging
 from typing import Optional, Callable
-from openai import AsyncOpenAI
 from app.core.config import settings
 from app.schemas.schemas import ParsedConfig
+from app.services.ai import get_text_provider, get_image_provider
 
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+logger = logging.getLogger(__name__)
+
 
 # ── Text Generation ────────────────────────────────────────────────────────
 
@@ -53,20 +59,16 @@ async def generate_text(
     max_retries: int = 2,
     style_profile: Optional[dict] = None,
 ) -> str:
+    provider = get_text_provider()
     for attempt in range(max_retries + 1):
         try:
-            response = await client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": TEXT_SYSTEM_PROMPT},
-                    {"role": "user", "content": _build_text_prompt(
-                        config, day_index, post_order, style_profile
-                    )},
-                ],
+            text = await provider.complete(
+                system=TEXT_SYSTEM_PROMPT,
+                user=_build_text_prompt(config, day_index, post_order, style_profile),
+                model=settings.AI_TEXT_MODEL,
                 temperature=0.8,
                 max_tokens=600,
             )
-            text = response.choices[0].message.content.strip()
             if config.tags:
                 hashtags = " ".join(f"#{t.strip().replace(' ', '_')}" for t in config.tags)
                 text = f"{text}\n\n{hashtags}"
@@ -75,7 +77,6 @@ async def generate_text(
             if attempt == max_retries:
                 return f"[Content for Day {day_index}, Post {post_order} — generation failed: {str(e)[:80]}]"
             await asyncio.sleep(1)
-
     return f"[Content for Day {day_index}, Post {post_order}]"
 
 
@@ -89,7 +90,7 @@ Return ONLY valid JSON (no markdown):
   "tone": "describe the tone (e.g. casual, formal, playful, professional)",
   "format": "describe formatting preferences (e.g. uses emojis, bullet points, bold words)",
   "length": "describe length preference (e.g. short and punchy, detailed with examples)",
-  "structure": "describe content structure (e.g. word → reading → meaning → example)",
+  "structure": "describe content structure (e.g. word -> reading -> meaning -> example)",
   "language_notes": "any language-specific observations (e.g. mixes Vietnamese and Japanese)",
   "other": "any other notable style preferences"
 }
@@ -103,32 +104,114 @@ async def generate_style_profile(
     original_text: str,
     edited_text: str,
 ) -> Optional[dict]:
-    """
-    Extract style profile from user's edits using GPT-4o Mini.
-    Returns None if no significant changes detected.
-    """
     if not original_text or not edited_text:
         return None
     if original_text.strip() == edited_text.strip():
         return None
 
     try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": STYLE_EXTRACT_PROMPT},
-                {"role": "user", "content": f"ORIGINAL:\n{original_text}\n\nEDITED:\n{edited_text}"},
-            ],
+        provider = get_text_provider()
+        raw = await provider.complete(
+            system=STYLE_EXTRACT_PROMPT,
+            user=f"ORIGINAL:\n{original_text}\n\nEDITED:\n{edited_text}",
+            model=settings.AI_MINI_MODEL,
             temperature=0.1,
             max_tokens=300,
-            response_format={"type": "json_object"},
+            json_mode=True,
         )
-        data = json.loads(response.choices[0].message.content)
+        data = json.loads(raw)
         if data.get("no_changes"):
             return None
         return data
     except Exception:
         return None
+
+
+# ── Image Prompt Generation ────────────────────────────────────────────────
+
+IMAGE_PROMPT_DEVELOPER_SYSTEM = """You are an expert at writing prompts for AI image generation.
+Your job is to take a user's image description and develop it into an optimal prompt.
+
+Rules:
+- Output ONLY the prompt text, no explanation, no quotes
+- Always add: "No text or typography in the image. Square format, suitable for Facebook post."
+- Keep it under 150 words
+- Be specific about style, colors, mood, composition
+- If description mentions a specific style (anime, flat design, etc.), emphasize it
+- Make it visually appealing for social media
+"""
+
+
+async def generate_image_prompt(
+    image_description: str,
+    content_type: str,
+    day_index: int,
+) -> str:
+    """
+    Develop user's image description into optimized prompt via mini model.
+    Falls back to a generic prompt if no description or API fails.
+    """
+    if not image_description.strip():
+        return (
+            f"Clean, minimal flat design illustration for a {content_type} social media post. "
+            f"Warm colors, professional look. No text or typography. Square format."
+        )
+
+    try:
+        provider = get_text_provider()
+        return await provider.complete(
+            system=IMAGE_PROMPT_DEVELOPER_SYSTEM,
+            user=(
+                f"Image description: {image_description}\n"
+                f"Content type: {content_type}\n"
+                f"Day: {day_index}\n"
+                f"Develop this into an optimal image generation prompt."
+            ),
+            model=settings.AI_MINI_MODEL,
+            temperature=0.7,
+            max_tokens=200,
+        )
+    except Exception:
+        return (
+            f"{image_description}. Clean illustration for {content_type} Facebook post. "
+            f"No text or typography in the image. Square format."
+        )
+
+
+# ── Image Generation ───────────────────────────────────────────────────────
+
+async def generate_image(
+    config: ParsedConfig,
+    day_index: int,
+    max_retries: int = 1,
+) -> tuple[Optional[str], str]:
+    """
+    Generate image via configured image provider.
+    Returns (image_url, image_prompt). Returns (None, prompt) after retry exhaustion.
+    """
+    prompt = await generate_image_prompt(
+        image_description=config.image_description,
+        content_type=config.content_type,
+        day_index=day_index,
+    )
+    provider = get_image_provider()
+    for attempt in range(max_retries + 1):
+        try:
+            url = await provider.generate(
+                prompt=prompt,
+                model=settings.AI_IMAGE_MODEL,
+                size="1024x1024",
+            )
+            return url, prompt
+        except Exception as e:
+            if attempt == max_retries:
+                logger.error(
+                    f"Image generation failed (provider={settings.AI_IMAGE_PROVIDER}, "
+                    f"model={settings.AI_IMAGE_MODEL}): {e}"
+                )
+                return None, prompt
+            await asyncio.sleep(2)
+    return None, prompt
 
 
 # ── Day-level Generation ───────────────────────────────────────────────────
@@ -169,130 +252,29 @@ async def generate_day_content(
     return results
 
 
-# ── Image Generation ───────────────────────────────────────────────────────
-
-IMAGE_PROMPT_DEVELOPER_SYSTEM = """You are an expert at writing prompts for DALL-E 3 image generation.
-Your job is to take a user's image description and develop it into an optimal DALL-E 3 prompt.
-
-Rules:
-- Output ONLY the prompt text, no explanation, no quotes
-- Always add: "No text or typography in the image. Square format, suitable for Facebook post."
-- Keep it under 150 words
-- Be specific about style, colors, mood, composition
-- If description mentions a specific style (anime, flat design, etc.), emphasize it
-- Make it visually appealing for social media
-"""
-
-
-async def generate_image_prompt(
-    image_description: str,
-    content_type: str,
-    day_index: int,
-) -> str:
-    """
-    Develop user's image description into optimized DALL-E 3 prompt via GPT-4o Mini.
-    Falls back to a generic prompt if no description or API fails.
-    """
-    if not image_description.strip():
-        return (
-            f"Clean, minimal flat design illustration for a {content_type} social media post. "
-            f"Warm colors, professional look. No text or typography. Square format."
-        )
-
-    try:
-        response = await client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": IMAGE_PROMPT_DEVELOPER_SYSTEM},
-                {"role": "user", "content": (
-                    f"Image description: {image_description}\n"
-                    f"Content type: {content_type}\n"
-                    f"Day: {day_index}\n"
-                    f"Develop this into an optimal DALL-E 3 prompt."
-                )},
-            ],
-            temperature=0.7,
-            max_tokens=200,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception:
-        return (
-            f"{image_description}. Clean illustration for {content_type} Facebook post. "
-            f"No text or typography in the image. Square format."
-        )
-
-
-async def generate_image(
-    config: ParsedConfig,
-    day_index: int,
-    max_retries: int = 1,
-) -> tuple[Optional[str], str]:
-    """
-    Generate image via DALL-E 3.
-    Uses GPT-4o Mini to develop image_description into optimized prompt.
-    Returns (image_url, image_prompt). image_url is None on failure.
-    """
-    prompt = await generate_image_prompt(
-        image_description=config.image_description,
-        content_type=config.content_type,
-        day_index=day_index,
-    )
-
-    for attempt in range(max_retries + 1):
-        try:
-            response = await client.images.generate(
-                model="dall-e-3",
-                prompt=prompt,
-                size="1024x1024",
-                quality="standard",
-                n=1,
-            )
-            url = response.data[0].url
-            return url, prompt
-        except Exception:
-            if attempt == max_retries:
-                return None, prompt
-            await asyncio.sleep(2)
-
-    return None, prompt
-
-
-# ── Batch Generation ───────────────────────────────────────────────────────
-
 async def generate_all_content(
     config: ParsedConfig,
     post_slots: list[dict],
     on_progress: Optional[Callable[[int, int], None]] = None,
 ) -> list[dict]:
-    """
-    Generate content for all post slots.
-    post_slots: list of dicts from generate_schedule()
-    on_progress: optional callback(current, total) for SSE progress
-    Returns updated post_slots with content_text, image_url, image_prompt filled in.
-    """
     total = len(post_slots)
     results = []
 
     for i, slot in enumerate(post_slots):
         text = await generate_text(config, slot["day_index"], slot["post_order"])
-
         image_url = slot.get("image_url")
         image_prompt = slot.get("image_prompt")
-
         if config.has_images and not image_url:
             image_url, image_prompt = await generate_image(config, slot["day_index"])
 
-        updated = {
+        results.append({
             **slot,
             "content_text": text,
             "image_url": image_url,
             "image_prompt": image_prompt,
-        }
-        results.append(updated)
-
+        })
         if on_progress:
             on_progress(i + 1, total)
-
         if i < total - 1:
             await asyncio.sleep(0.3)
 
