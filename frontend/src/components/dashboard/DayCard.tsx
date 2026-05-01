@@ -29,6 +29,7 @@ export default function DayCard({ post, jobId, hasImages, onUpdate }: DayCardPro
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [isApproving, setIsApproving] = useState(false)
   const [error, setError] = useState('')
+  const [imageError, setImageError] = useState('')
 
   useEffect(() => {
     if (!isDirty) setEditText(post.content_text ?? '')
@@ -54,12 +55,12 @@ export default function DayCard({ post, jobId, hasImages, onUpdate }: DayCardPro
 
   const handleGenImage = async () => {
     setIsGeneratingImage(true)
-    setError('')
+    setImageError('')
     try {
       await regenerateImage(jobId, post.id, imageStyleNote || undefined)
       onUpdate()
     } catch {
-      setError('Gen ảnh thất bại, thử lại')
+      setImageError('Gen ảnh thất bại. Vui lòng thử lại.')
     } finally {
       setIsGeneratingImage(false)
     }
@@ -221,31 +222,70 @@ export default function DayCard({ post, jobId, hasImages, onUpdate }: DayCardPro
               className="w-full max-h-64 object-cover rounded-lg border border-purple-500/10"
             />
           )}
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={imageStyleNote}
-              onChange={e => setImageStyleNote(e.target.value)}
-              placeholder="Ghi chú về ảnh (tuỳ chọn: bớt anime, thêm pastel...)"
-              className="flex-1 bg-[#111827] border border-purple-500/20 rounded-lg px-3 py-1.5
-                         text-gray-200 text-xs focus:outline-none focus:ring-1
-                         focus:ring-purple-500/40 placeholder:text-gray-600"
-            />
-            <button
-              onClick={handleGenImage}
-              disabled={isGeneratingImage}
-              className="text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300
-                         border border-purple-500/30 hover:bg-purple-600/30 transition-colors
-                         disabled:opacity-50 whitespace-nowrap flex items-center gap-1"
-            >
-              {isGeneratingImage ? (
-                <>
-                  <span className="w-3 h-3 border-2 border-purple-300/40 border-t-purple-300 rounded-full animate-spin" />
-                  Đang gen...
-                </>
-              ) : post.image_url ? 'Gen lại ảnh' : 'Gen ảnh'}
-            </button>
-          </div>
+
+          {/* Day 2+ with missing image: scheduler may not have run or failed */}
+          {!post.image_url && post.day_index > 1 ? (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 space-y-2">
+              <p className="text-xs text-yellow-300/80">
+                Ảnh chưa được tạo. Scheduler sẽ tự gen trước giờ đăng,
+                hoặc bạn có thể gen thủ công ngay bây giờ.
+              </p>
+              <input
+                type="text"
+                value={imageStyleNote}
+                onChange={e => setImageStyleNote(e.target.value)}
+                placeholder="Ghi chú về ảnh (tuỳ chọn)"
+                className="w-full bg-[#111827] border border-yellow-500/20 rounded-lg px-3 py-1.5
+                           text-gray-200 text-xs focus:outline-none focus:ring-1
+                           focus:ring-yellow-500/40 placeholder:text-gray-600"
+              />
+              <button
+                onClick={handleGenImage}
+                disabled={isGeneratingImage}
+                className="text-xs px-3 py-1.5 rounded-lg bg-yellow-500/20 text-yellow-300
+                           border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors
+                           disabled:opacity-50 flex items-center gap-1"
+              >
+                {isGeneratingImage ? (
+                  <>
+                    <span className="w-3 h-3 border-2 border-yellow-300/40 border-t-yellow-300 rounded-full animate-spin" />
+                    Đang gen...
+                  </>
+                ) : 'Gen ảnh ngay'}
+              </button>
+              {imageError && <p className="text-xs text-red-400">{imageError}</p>}
+            </div>
+          ) : (
+            /* Day 1 (no image) or any day (has image): regular input + button */
+            <>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={imageStyleNote}
+                  onChange={e => setImageStyleNote(e.target.value)}
+                  placeholder="Ghi chú về ảnh (tuỳ chọn: bớt anime, thêm pastel...)"
+                  className="flex-1 bg-[#111827] border border-purple-500/20 rounded-lg px-3 py-1.5
+                             text-gray-200 text-xs focus:outline-none focus:ring-1
+                             focus:ring-purple-500/40 placeholder:text-gray-600"
+                />
+                <button
+                  onClick={handleGenImage}
+                  disabled={isGeneratingImage}
+                  className="text-xs px-3 py-1.5 rounded-lg bg-purple-600/20 text-purple-300
+                             border border-purple-500/30 hover:bg-purple-600/30 transition-colors
+                             disabled:opacity-50 whitespace-nowrap flex items-center gap-1"
+                >
+                  {isGeneratingImage ? (
+                    <>
+                      <span className="w-3 h-3 border-2 border-purple-300/40 border-t-purple-300 rounded-full animate-spin" />
+                      Đang gen...
+                    </>
+                  ) : post.image_url ? 'Gen lại ảnh' : 'Gen ảnh'}
+                </button>
+              </div>
+              {imageError && <p className="text-xs text-red-400">{imageError}</p>}
+            </>
+          )}
         </div>
       )}
 

@@ -232,17 +232,19 @@ async def confirm_job(
 # ── POST /jobs/{id}/posts/{post_id}/approve ────────────────────────────────
 
 async def _extract_and_save_style_profile(job_id: int, original: str, edited: str):
-    """Background task: extract style profile and save to job."""
-    profile = await generate_style_profile(original, edited)
-    if profile:
-        db = SessionLocal()
-        try:
-            job = db.query(Job).filter(Job.id == job_id).first()
-            if job:
-                job.style_profile = profile
-                db.commit()
-        finally:
-            db.close()
+    """Background task: extract text style and merge into existing job.style_profile."""
+    text_style = await generate_style_profile(original, edited)
+    if not text_style:
+        return
+    db = SessionLocal()
+    try:
+        job = db.query(Job).filter(Job.id == job_id).first()
+        if job:
+            existing = dict(job.style_profile) if job.style_profile else {}
+            job.style_profile = {**existing, **text_style}
+            db.commit()
+    finally:
+        db.close()
 
 
 @router.post("/{job_id}/posts/{post_id}/approve", response_model=JobPostOut)
@@ -285,10 +287,17 @@ async def approve_post(
     post.approved_at = datetime.now(timezone.utc)
     db.commit()
 
-    # Extract style profile if Day 1 was edited (non-blocking background task)
-    if post.day_index == 1 and not job.style_profile:
+    # Extract text style if Day 1 was edited — only if "tone" key not yet present
+    # (independent of image_direction which may already be in style_profile)
+    if post.day_index == 1:
         current_text = post.content_text
-        if original and current_text and current_text.strip() != original.strip():
+        existing_style = job.style_profile or {}
+        if (
+            "tone" not in existing_style
+            and original
+            and current_text
+            and current_text.strip() != original.strip()
+        ):
             asyncio.create_task(
                 _extract_and_save_style_profile(job.id, original, current_text)
             )
