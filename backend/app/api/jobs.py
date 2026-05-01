@@ -335,14 +335,9 @@ async def regenerate_post_image(
     if not config.has_images:
         raise HTTPException(status_code=400, detail="This job does not have images enabled")
 
-    effective_description = config.image_description
-    if body.image_style_note:
-        effective_description = f"{config.image_description}. Style note: {body.image_style_note}"
-
-    modified_config = config.model_copy(update={"image_description": effective_description})
-
     image_url, image_prompt = await generate_image(
-        modified_config, post.day_index, content_text=post.content_text
+        config, post.day_index, content_text=post.content_text,
+        image_style_note=body.image_style_note,
     )
 
     if image_url is None:

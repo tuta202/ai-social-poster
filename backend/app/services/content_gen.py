@@ -130,14 +130,19 @@ async def generate_style_profile(
 # ── Image Prompt Generation ────────────────────────────────────────────────
 
 IMAGE_PROMPT_DEVELOPER_SYSTEM = """You are an expert at writing prompts for AI image generation.
-Your job is to take a user's image description and develop it into an optimal prompt.
+Your job is to create an optimal image generation prompt from the inputs provided.
+
+Inputs you may receive:
+- [Content]: the subject/theme of the image
+- [Style instruction]: explicit style direction from the user — treat this as HIGHEST PRIORITY
 
 Rules:
 - Output ONLY the prompt text, no explanation, no quotes
+- If [Style instruction] is provided, it MUST dominate the visual style of the prompt.
+  Override or drop conflicting style elements from [Content] if needed.
 - Always add: "No text or typography in the image. Square format, suitable for Facebook post."
 - Keep it under 150 words
 - Be specific about style, colors, mood, composition
-- If description mentions a specific style (anime, flat design, etc.), emphasize it
 - Make it visually appealing for social media
 """
 
@@ -147,6 +152,7 @@ async def generate_image_prompt(
     content_type: str,
     day_index: int,
     content_text: Optional[str] = None,
+    image_style_note: Optional[str] = None,
 ) -> str:
     """
     Develop user's image description into optimized prompt via mini model.
@@ -161,14 +167,13 @@ async def generate_image_prompt(
     try:
         provider = get_text_provider()
         user_input = (
-            f"Image description from config: {image_description}\n"
-            f"Content type: {content_type}\n"
-            f"Day: {day_index}\n"
+            f"[Content]: {image_description}\n"
+            f"Content type: {content_type}, Day {day_index}\n"
         )
         if content_text:
-            user_input += f"Actual post content: {content_text}\n"
-        
-        user_input += "Develop this into an optimal image generation prompt that reflects the content."
+            user_input += f"Post text: {content_text}\n"
+        if image_style_note:
+            user_input += f"[Style instruction]: {image_style_note}\n"
 
         return await provider.complete(
             system=IMAGE_PROMPT_DEVELOPER_SYSTEM,
@@ -191,6 +196,7 @@ async def generate_image(
     day_index: int,
     content_text: Optional[str] = None,
     max_retries: int = 1,
+    image_style_note: Optional[str] = None,
 ) -> tuple[Optional[str], str]:
     """
     Generate image via configured image provider.
@@ -201,6 +207,7 @@ async def generate_image(
         content_type=config.content_type,
         day_index=day_index,
         content_text=content_text,
+        image_style_note=image_style_note,
     )
     provider = get_image_provider()
     for attempt in range(max_retries + 1):
@@ -239,6 +246,8 @@ async def generate_day_content(
     posts_per_day = config.items_per_day
     results = []
 
+    image_style_note = (style_profile or {}).get("image_direction")
+
     for post_order in range(1, posts_per_day + 1):
         text = await generate_text(
             config, day_index, post_order, style_profile=style_profile
@@ -246,7 +255,9 @@ async def generate_day_content(
         image_url = None
         image_prompt = None
         if config.has_images and not skip_images:
-            image_url, image_prompt = await generate_image(config, day_index, content_text=text)
+            image_url, image_prompt = await generate_image(
+                config, day_index, content_text=text, image_style_note=image_style_note
+            )
 
         results.append({
             "day_index": day_index,
