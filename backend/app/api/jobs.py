@@ -12,7 +12,7 @@ from app.api.deps import get_current_user
 from app.models.models import Job, JobPost, JobStatus, PostStatus, User
 from app.schemas.schemas import (
     ParseJobRequest, JobOut, JobListOut, JobPreviewResponse,
-    JobPostOut, ParsedConfig, ApprovePostRequest
+    JobPostOut, ParsedConfig, ApprovePostRequest, RegenerateImageRequest
 )
 from app.services.nlu_parser import parse_command
 from app.services.plan_generator import generate_schedule
@@ -20,6 +20,7 @@ from app.services.content_gen import (
     generate_all_content,
     generate_day_content,
     generate_style_profile,
+    generate_image,
 )
 
 router = APIRouter()
@@ -170,6 +171,7 @@ async def confirm_job(
                     day_index=1,
                     job_id=job_id,
                     style_profile=None,
+                    skip_images=True,
                 )
                 progress_queue.put_nowait(None)
                 return results
@@ -253,8 +255,8 @@ async def approve_post(
 ):
     """
     Approve a post for publishing.
-    If content_text is provided, update it before approving.
-    If Day 1 and content was edited → extract style profile for future days (background).
+    If image_style_note is provided, save it to job.style_profile["image_direction"].
+    If Day 1 content was edited previously → extract style profile (background).
     """
     job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
     if not job:
@@ -273,22 +275,74 @@ async def approve_post(
             detail=f"Post status is {post.status}, can only approve PENDING posts",
         )
 
-    original = post.original_content_text or post.content_text
-    if body.content_text and body.content_text.strip() != post.content_text.strip():
-        post.content_text = body.content_text
+    if body.image_style_note:
+        current_profile = dict(job.style_profile) if job.style_profile else {}
+        current_profile["image_direction"] = body.image_style_note
+        job.style_profile = current_profile
 
+    original = post.original_content_text or post.content_text
     post.status = PostStatus.APPROVED
     post.approved_at = datetime.now(timezone.utc)
     db.commit()
 
     # Extract style profile if Day 1 was edited (non-blocking background task)
-    if post.day_index == 1 and job.style_profile is None:
+    if post.day_index == 1 and not job.style_profile:
         current_text = post.content_text
-        if original and current_text.strip() != original.strip():
+        if original and current_text and current_text.strip() != original.strip():
             asyncio.create_task(
                 _extract_and_save_style_profile(job.id, original, current_text)
             )
 
+    db.refresh(post)
+    return post
+
+
+# ── POST /jobs/{id}/posts/{post_id}/regenerate-image ──────────────────────
+
+@router.post("/{job_id}/posts/{post_id}/regenerate-image", response_model=JobPostOut)
+async def regenerate_post_image(
+    job_id: int,
+    post_id: int,
+    body: RegenerateImageRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate (or regenerate) the image for a single post.
+    Accepts optional image_style_note to customize the generation.
+    """
+    job = db.query(Job).filter(Job.id == job_id, Job.user_id == current_user.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    post = db.query(JobPost).filter(
+        JobPost.id == post_id,
+        JobPost.job_id == job_id,
+    ).first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    config = ParsedConfig(**job.parsed_config)
+    if not config.has_images:
+        raise HTTPException(status_code=400, detail="This job does not have images enabled")
+
+    effective_description = config.image_description
+    if body.image_style_note:
+        effective_description = f"{config.image_description}. Style note: {body.image_style_note}"
+
+    modified_config = config.model_copy(update={"image_description": effective_description})
+
+    image_url, image_prompt = await generate_image(
+        modified_config, post.day_index, content_text=post.content_text
+    )
+
+    if image_url is None:
+        raise HTTPException(status_code=500, detail="Image generation failed — provider returned no URL")
+
+    post.image_url = image_url
+    post.image_prompt = image_prompt
+    post.image_style_note = body.image_style_note
+    db.commit()
     db.refresh(post)
     return post
 

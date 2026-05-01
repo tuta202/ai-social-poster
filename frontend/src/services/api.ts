@@ -27,10 +27,32 @@ api.interceptors.response.use(
 export const approvePost = async (
   jobId: number,
   postId: number,
-  editedText?: string,
-): Promise<void> => {
-  const body = editedText !== undefined ? { content_text: editedText } : {}
-  await api.post(`/jobs/${jobId}/posts/${postId}/approve`, body)
+  imageStyleNote?: string,
+): Promise<import('../types').JobPost> => {
+  const body: Record<string, string> = {}
+  if (imageStyleNote) body.image_style_note = imageStyleNote
+  const res = await api.post(`/jobs/${jobId}/posts/${postId}/approve`, body)
+  return res.data
+}
+
+export const updatePostText = async (
+  jobId: number,
+  postId: number,
+  text: string,
+): Promise<import('../types').JobPost> => {
+  const res = await api.put(`/jobs/${jobId}/posts/${postId}`, { content_text: text })
+  return res.data
+}
+
+export const regenerateImage = async (
+  jobId: number,
+  postId: number,
+  imageStyleNote?: string,
+): Promise<import('../types').JobPost> => {
+  const body: Record<string, string> = {}
+  if (imageStyleNote) body.image_style_note = imageStyleNote
+  const res = await api.post(`/jobs/${jobId}/posts/${postId}/regenerate-image`, body)
+  return res.data
 }
 
 /**

@@ -1,16 +1,16 @@
 import { useEffect, useState, useCallback } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import PageWrapper from '../components/layout/PageWrapper'
 import TopNav from '../components/layout/TopNav'
 import JobCard from '../components/dashboard/JobCard'
-import JobDetailPanel from '../components/dashboard/JobDetailPanel'
 import { useJobStore } from '../stores/jobStore'
 import { api } from '../services/api'
 import type { Job } from '../types'
 
 export default function DashboardPage() {
-  const { jobs, currentJob, isLoading, setJobs, setLoading, setCurrentJob, updateJob, removeJob } = useJobStore()
+  const { jobs, isLoading, setJobs, setLoading, updateJob, removeJob } = useJobStore()
+  const navigate = useNavigate()
   const [error, setError] = useState('')
 
   const fetchJobs = useCallback(async () => {
@@ -32,13 +32,8 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [fetchJobs])
 
-  const handleView = async (job: Job) => {
-    try {
-      const res = await api.get(`/jobs/${job.id}`)
-      setCurrentJob(res.data)
-    } catch {
-      setCurrentJob(job)
-    }
+  const handleView = (job: Job) => {
+    navigate(`/jobs/${job.id}`)
   }
 
   const handlePause = async (id: number) => {
@@ -54,18 +49,6 @@ export default function DashboardPage() {
   const handleDelete = async (id: number) => {
     await api.delete(`/jobs/${id}`)
     removeJob(id)
-  }
-
-  const handleApprovePost = async (
-    jobId: number,
-    postId: number,
-    editedText?: string,
-  ) => {
-    const body = editedText !== undefined ? { content_text: editedText } : {}
-    await api.post(`/jobs/${jobId}/posts/${postId}/approve`, body)
-    const res = await api.get(`/jobs/${jobId}`)
-    setCurrentJob(res.data)
-    fetchJobs()
   }
 
   const statusOrder: Record<string, number> = {
@@ -187,11 +170,6 @@ export default function DashboardPage() {
         )}
       </main>
 
-      <JobDetailPanel
-        job={currentJob}
-        onClose={() => setCurrentJob(null)}
-        onApprovePost={handleApprovePost}
-      />
     </PageWrapper>
   )
 }

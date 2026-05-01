@@ -30,12 +30,21 @@ export interface JobPost {
   original_content_text: string | null
   image_url: string | null
   image_prompt: string | null
+  image_style_note: string | null
   scheduled_time: string
   status: PostStatus
   fb_post_id: string | null
   error_message: string | null
   posted_at: string | null
   approved_at: string | null
+}
+
+export interface RegenerateImageRequest {
+  image_style_note?: string
+}
+
+export interface ApprovePostRequest {
+  image_style_note?: string
 }
 
 export interface ParsedConfig {

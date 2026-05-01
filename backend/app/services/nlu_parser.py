@@ -37,11 +37,12 @@ DEFAULTS if not specified:
 RULES:
 - Always return valid JSON only
 - has_images: true only if user explicitly mentions images/photos/illustrations/anh/hinh
-- image_description: extract EXACTLY what the user says about image style/content
+- image_description: describe the desired image style and content based on user input. 
+  Include instructions even if they refer to the post's content (e.g., "illustrate the word").
   Examples:
     "anh anime mau pastel" -> "anime style, pastel colors"
-    "flat design illustration" -> "flat design illustration"
     "anh minh hoa don gian" -> "simple illustration"
+    "anh minh hoa ve tu vung trong bai" -> "illustration of the vocabulary mentioned in the post"
     no image mentioned -> ""
 - Infer content_type from context (e.g. "tu vung N2" -> "vocabulary", "dong luc" -> "motivation")
 - Normalize typos (e.g. "1O ngay" -> duration_days: 10)

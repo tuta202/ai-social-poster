@@ -146,6 +146,7 @@ async def generate_image_prompt(
     image_description: str,
     content_type: str,
     day_index: int,
+    content_text: Optional[str] = None,
 ) -> str:
     """
     Develop user's image description into optimized prompt via mini model.
@@ -159,14 +160,19 @@ async def generate_image_prompt(
 
     try:
         provider = get_text_provider()
+        user_input = (
+            f"Image description from config: {image_description}\n"
+            f"Content type: {content_type}\n"
+            f"Day: {day_index}\n"
+        )
+        if content_text:
+            user_input += f"Actual post content: {content_text}\n"
+        
+        user_input += "Develop this into an optimal image generation prompt that reflects the content."
+
         return await provider.complete(
             system=IMAGE_PROMPT_DEVELOPER_SYSTEM,
-            user=(
-                f"Image description: {image_description}\n"
-                f"Content type: {content_type}\n"
-                f"Day: {day_index}\n"
-                f"Develop this into an optimal image generation prompt."
-            ),
+            user=user_input,
             model=settings.AI_MINI_MODEL,
             temperature=0.7,
             max_tokens=200,
@@ -183,6 +189,7 @@ async def generate_image_prompt(
 async def generate_image(
     config: ParsedConfig,
     day_index: int,
+    content_text: Optional[str] = None,
     max_retries: int = 1,
 ) -> tuple[Optional[str], str]:
     """
@@ -193,6 +200,7 @@ async def generate_image(
         image_description=config.image_description,
         content_type=config.content_type,
         day_index=day_index,
+        content_text=content_text,
     )
     provider = get_image_provider()
     for attempt in range(max_retries + 1):
@@ -221,10 +229,12 @@ async def generate_day_content(
     day_index: int,
     job_id: int,
     style_profile: Optional[dict] = None,
+    skip_images: bool = False,
 ) -> list[dict]:
     """
     Generate content for all posts in a single day.
     Used by confirm (Day 1) and scheduler (Day N+1).
+    skip_images=True is used by confirm so the user triggers image gen manually.
     """
     posts_per_day = config.items_per_day
     results = []
@@ -235,8 +245,8 @@ async def generate_day_content(
         )
         image_url = None
         image_prompt = None
-        if config.has_images:
-            image_url, image_prompt = await generate_image(config, day_index)
+        if config.has_images and not skip_images:
+            image_url, image_prompt = await generate_image(config, day_index, content_text=text)
 
         results.append({
             "day_index": day_index,
@@ -265,7 +275,7 @@ async def generate_all_content(
         image_url = slot.get("image_url")
         image_prompt = slot.get("image_prompt")
         if config.has_images and not image_url:
-            image_url, image_prompt = await generate_image(config, slot["day_index"])
+            image_url, image_prompt = await generate_image(config, slot["day_index"], content_text=text)
 
         results.append({
             **slot,

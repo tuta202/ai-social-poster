@@ -85,5 +85,6 @@ class JobPost(Base):
     error_message = Column(Text, nullable=True)
     posted_at = Column(DateTime(timezone=True), nullable=True)
     approved_at = Column(DateTime(timezone=True), nullable=True)
+    image_style_note = Column(Text, nullable=True)
 
     job = relationship("Job", back_populates="posts")

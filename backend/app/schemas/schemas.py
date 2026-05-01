@@ -61,6 +61,7 @@ class JobPostOut(BaseModel):
     original_content_text: Optional[str]
     image_url: Optional[str]
     image_prompt: Optional[str]
+    image_style_note: Optional[str] = None
     scheduled_time: datetime
     status: PostStatus
     fb_post_id: Optional[str]
@@ -84,7 +85,11 @@ class JobOut(BaseModel):
 
 
 class ApprovePostRequest(BaseModel):
-    content_text: Optional[str] = None
+    image_style_note: Optional[str] = None
+
+
+class RegenerateImageRequest(BaseModel):
+    image_style_note: Optional[str] = None
 
 
 class JobPreviewResponse(BaseModel):

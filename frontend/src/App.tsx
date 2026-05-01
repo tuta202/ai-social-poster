@@ -5,6 +5,7 @@ import ProtectedRoute from './components/layout/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import CommandPage from './pages/CommandPage'
 import DashboardPage from './pages/DashboardPage'
+import JobDetailPage from './pages/JobDetailPage'
 import FacebookSetupPage from './pages/FacebookSetupPage'
 
 export default function App() {
@@ -30,6 +31,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/jobs/:id"
+        element={
+          <ProtectedRoute>
+            <JobDetailPage />
           </ProtectedRoute>
         }
       />
