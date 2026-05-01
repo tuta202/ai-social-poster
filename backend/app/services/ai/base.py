@@ -35,10 +35,14 @@ class ImageProvider(ABC):
         prompt: str,
         model: str,
         size: str = "1024x1024",
+        quality: str = "low",
+        style: str = "vivid",
     ) -> str:
         """
         Generate image from prompt.
         Returns image URL string.
+        - quality: "low"|"medium"|"high" for gpt-image-2 / "standard"|"hd" for dall-e-3
+        - style:   "vivid"|"natural" — vivid gives ChatGPT-style vibrant renders
         Raises Exception on failure — no silent fallback.
         """
         ...

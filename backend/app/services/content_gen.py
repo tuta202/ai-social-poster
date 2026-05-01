@@ -133,17 +133,17 @@ IMAGE_PROMPT_DEVELOPER_SYSTEM = """You are an expert at writing prompts for AI i
 Your job is to create an optimal image generation prompt from the inputs provided.
 
 Inputs you may receive:
-- [Content]: the subject/theme of the image
-- [Style instruction]: explicit style direction from the user — treat this as HIGHEST PRIORITY
+- [Content]: the general subject/theme requested
+- [Post text]: the actual content of the post
+- [Style instruction]: explicit style direction — treat this as HIGHEST PRIORITY
 
-Rules:
-- Output ONLY the prompt text, no explanation, no quotes
-- If [Style instruction] is provided, it MUST dominate the visual style of the prompt.
-  Override or drop conflicting style elements from [Content] if needed.
-- Always add: "No text or typography in the image. Square format, suitable for Facebook post."
-- Keep it under 150 words
-- Be specific about style, colors, mood, composition
-- Make it visually appealing for social media
+Rules for creating the prompt:
+1. Output ONLY the prompt text, no explanation, no quotes.
+2. EXTRACT DETAILS: Do NOT be generic (e.g. don't just say "illustration of vocabulary"). You MUST read the '[Post text]' and extract the specific objects, scenes, or exact words to illustrate.
+3. TEXT IN IMAGE: Modern AI can render text! If the post is about vocabulary (e.g. Japanese Kanji/Hiragana), explicitly instruct the image AI to write the top 1-4 specific words beautifully in the image. Be exact with the characters.
+4. STYLE: If [Style instruction] is provided, it must dominate the visual style.
+5. FORMAT: Always end with: "Square format, highly aesthetic, visually striking for a Facebook post."
+6. Keep it under 200 words.
 """
 
 
@@ -160,8 +160,8 @@ async def generate_image_prompt(
     """
     if not image_description.strip():
         return (
-            f"Clean, minimal flat design illustration for a {content_type} social media post. "
-            f"Warm colors, professional look. No text or typography. Square format."
+            f"Clean, beautiful illustration for a {content_type} social media post. "
+            f"Warm colors, professional look. Square format."
         )
 
     try:
@@ -171,21 +171,23 @@ async def generate_image_prompt(
             f"Content type: {content_type}, Day {day_index}\n"
         )
         if content_text:
-            user_input += f"Post text: {content_text}\n"
+            user_input += f"[Post text]:\n{content_text}\n"
         if image_style_note:
             user_input += f"[Style instruction]: {image_style_note}\n"
+
+        print("USER INPUT", user_input)
 
         return await provider.complete(
             system=IMAGE_PROMPT_DEVELOPER_SYSTEM,
             user=user_input,
             model=settings.AI_MINI_MODEL,
             temperature=0.7,
-            max_tokens=200,
+            max_tokens=250,
         )
     except Exception:
         return (
-            f"{image_description}. Clean illustration for {content_type} Facebook post. "
-            f"No text or typography in the image. Square format."
+            f"{image_description}. Clean beautiful illustration for {content_type} Facebook post. "
+            f"Square format."
         )
 
 
@@ -209,6 +211,7 @@ async def generate_image(
         content_text=content_text,
         image_style_note=image_style_note,
     )
+    print("PROMPT", prompt)
     provider = get_image_provider()
     for attempt in range(max_retries + 1):
         try:
@@ -216,7 +219,10 @@ async def generate_image(
                 prompt=prompt,
                 model=settings.AI_IMAGE_MODEL,
                 size=settings.AI_IMAGE_SIZE,
+                quality=settings.AI_IMAGE_QUALITY,
+                style=settings.AI_IMAGE_STYLE,
             )
+            print("URL", url)
             return url, prompt
         except Exception as e:
             if attempt == max_retries:

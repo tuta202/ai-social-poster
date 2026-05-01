@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import type { JobPost } from '../../types'
+import ImageViewer from './ImageViewer'
 
 interface Props {
   post: JobPost
@@ -18,6 +19,7 @@ export default function PostCard({
   const [editText, setEditText]       = useState(post.content_text ?? '')
   const [isSaving, setIsSaving]       = useState(false)
   const [isApproving, setIsApproving] = useState(false)
+  const [viewerOpen, setViewerOpen]   = useState(false)
 
   const contentText = post.content_text
 
@@ -98,13 +100,44 @@ export default function PostCard({
         </div>
       </div>
 
-      {/* Image */}
+      {/* Image — square thumbnail with zoom */}
       {showImage && post.image_url && (
-        <img
-          src={post.image_url}
-          alt={`Post day ${post.day_index}`}
-          className="w-full h-40 object-cover rounded-lg border border-purple-500/10"
-        />
+        <>
+          <div
+            className="relative group w-full aspect-square overflow-hidden rounded-xl
+                       border border-purple-500/15 cursor-zoom-in bg-black/20"
+            onClick={() => setViewerOpen(true)}
+            role="button"
+            aria-label="View full image"
+          >
+            <img
+              src={post.image_url}
+              alt={`Post day ${post.day_index}`}
+              className="w-full h-full object-cover transition-transform duration-300
+                         group-hover:scale-105"
+            />
+            {/* Zoom overlay */}
+            <div className="absolute inset-0 flex items-center justify-center
+                            opacity-0 group-hover:opacity-100 transition-opacity duration-200
+                            bg-black/30">
+              <div className="w-10 h-10 rounded-full bg-black/60 border border-white/20
+                              flex items-center justify-center backdrop-blur-sm">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
+                     stroke="white" strokeWidth="2" strokeLinecap="round">
+                  <circle cx="11" cy="11" r="8"/>
+                  <path d="m21 21-4.35-4.35M11 8v6M8 11h6"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+          {viewerOpen && (
+            <ImageViewer
+              src={post.image_url}
+              alt={`Post day ${post.day_index}`}
+              onClose={() => setViewerOpen(false)}
+            />
+          )}
+        </>
       )}
 
       {/* Content — null guard */}

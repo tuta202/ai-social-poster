@@ -19,8 +19,10 @@ class Settings(BaseSettings):
 
     # AI Image Provider
     AI_IMAGE_PROVIDER: str = "openai"   # "openai" | "gemini"
-    AI_IMAGE_MODEL: str = "dall-e-3"    # dall-e-3 | imagen-3.0-generate-001
+    AI_IMAGE_MODEL: str = "gpt-image-2"  # gpt-image-2 | dall-e-3 | imagen-3.0-generate-001
     AI_IMAGE_SIZE: str = "1024x1024"
+    AI_IMAGE_QUALITY: str = "low"        # gpt-image-2: low|medium|high  /  dall-e-3: standard|hd
+    AI_IMAGE_STYLE: str = "vivid"        # vivid = ChatGPT-style vibrant | natural = realistic
 
     # Gemini API Key
     GEMINI_API_KEY: str = ""

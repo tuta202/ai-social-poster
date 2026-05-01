@@ -22,17 +22,12 @@ async def post_to_facebook(
     import logging as _logging
     _logger = _logging.getLogger(__name__)
 
-    # Gemini Imagen returns base64 data URLs — Facebook can't fetch these.
-    # Post as text-only and log a warning.
-    if image_url and image_url.startswith("data:"):
-        _logger.warning(
-            "Image is a base64 data URL (Gemini Imagen) — "
-            "posting as text-only. Configure object storage to support Gemini images."
-        )
-        image_url = None
-
     async with httpx.AsyncClient(timeout=30.0) as client:
-        if image_url:
+        if image_url and image_url.startswith("data:"):
+            # gpt-image-1.x returns base64 data URIs — upload bytes directly
+            _logger.info("Image is base64 data URI — uploading bytes to Facebook")
+            return await _post_with_image_bytes(client, page, message, image_url)
+        elif image_url:
             return await _post_with_image(client, page, message, image_url)
         else:
             return await _post_text_only(client, page, message)
@@ -70,6 +65,35 @@ async def _post_with_image(
         "access_token": page.access_token,
     }
     response = await client.post(url, data=payload)
+    return _handle_response(response)
+
+
+async def _post_with_image_bytes(
+    client: httpx.AsyncClient,
+    page: FacebookPage,
+    message: str,
+    data_uri: str,
+) -> str:
+    """
+    Upload raw image bytes to /PAGE_ID/photos.
+    Used when image is a base64 data URI (gpt-image-1.x family).
+    """
+    import base64
+    # data:image/png;base64,<data>
+    header, b64data = data_uri.split(",", 1)
+    mime = header.split(";")[0].split(":")[1]   # e.g. image/png
+    ext = mime.split("/")[1]                     # e.g. png
+    image_bytes = base64.b64decode(b64data)
+
+    url = f"{GRAPH_API_BASE}/{page.page_id}/photos"
+    response = await client.post(
+        url,
+        data={
+            "caption": message,
+            "access_token": page.access_token,
+        },
+        files={"source": (f"image.{ext}", image_bytes, mime)},
+    )
     return _handle_response(response)
 
 
