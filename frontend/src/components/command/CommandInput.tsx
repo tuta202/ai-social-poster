@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 
 const EXAMPLES = [
-  'Tạo kịch bản học từ vựng N2 trong 10 ngày, mỗi ngày 1 từ, có ảnh minh họa, đăng lúc 8 giờ sáng',
-  'Create 7 motivational posts about language learning, post at 8pm daily',
-  'Schedule 14 daily Japanese grammar tips with images, starting tomorrow at noon',
+  'Tạo 10 bài học từ vựng N3 trong 10 ngày, mỗi ngày 1 bài lúc 08:00, có ảnh minh họa anime',
+  'Tạo 5 bài học từ vựng chủ đề ăn uống, có ảnh minh họa sát theo nội dung từng từ vựng',
+  'Create 7 motivational quotes for language learners, post 1 daily at 20:00, with minimalist photos',
+  'Lên lịch chuỗi 14 mẹo ngữ pháp N4, mỗi ngày 2 bài lúc 12:00, kèm hashtag #jlpt #n4',
 ]
 
 interface Props {
@@ -29,7 +30,7 @@ export default function CommandInput({ onParse, isLoading, disabled }: Props) {
           value={value}
           onChange={e => setValue(e.target.value)}
           disabled={disabled || isLoading}
-          placeholder={`Describe your campaign in natural language...\n\ne.g. "Tạo 10 bài học từ vựng N2 trong 10 ngày, có ảnh, đăng lúc 8h sáng"`}
+          placeholder={`Describe your campaign in natural language...\n\ne.g. "Tạo 10 bài học từ vựng N2, mỗi bài có ảnh minh họa sát theo nội dung từ vựng đó..."`}
           rows={5}
           className="w-full bg-[#111827] border border-purple-500/20 rounded-2xl px-5 py-4
                      text-gray-100 placeholder-gray-600 text-sm leading-relaxed resize-none
